@@ -1,0 +1,97 @@
+package <%= package %>;
+<% operation_input = is_operation_input(data_type, schema) %>
+<% imports(data_type, schema, package, classname, "soap", operation_input).each do |import| %>
+import <%= import %>;
+<% end %>
+
+public class <%= validate_class_name(classname) %><% if data_type.fault %> extends RuntimeException <% end %><% if operation_input %> implements XMLMessageSerializer<% end %> {
+
+	/**
+	 * Namespace of <%= classname %>
+	 */
+	public static final String nameSpace = "<%= data_type.package %>";
+
+<% const_args = {} %>
+<% type = data_type %>
+<% while type %>
+<% type.properties.each do |name, property| %>
+<% vname = validate_property_name(name) %>
+<% const_args[vname] = get_property_class(property, classname) if property.required %>
+	/**
+	 * <%= property.description %>
+	 */
+	private <%= get_property_class(property, classname) %> <%= vname %><% if property.array %> = new ArrayList<<%= validate_class_name(find_basic_type(property.type)) %>>()<% end %>;
+
+<% end %>
+<% type = schema.data_types[type.extends] %>
+<% end %>
+	/**
+	 * Default Constructor
+	 */
+	public <%= classname %>() {
+	}
+
+<% if const_args.size > 0 %>
+	/**
+	 * Parameterized Constructor
+	 */
+	public <%= classname %>(<%= const_args.map{|name, type| "#{type} #{name}"}.join(", ") %>) {
+<% const_args.each do |name, type| %>
+		this.<%= name %> = <%= name %>;
+<% end %>
+	}
+<% end %>
+
+<% data_type.properties.each do |name, property| %>
+<%
+   vname = validate_property_name(name)
+   methodname = validate_class_name(name)
+%>
+
+	/**
+	 * Setter for <%= vname %>
+	 */
+	public <%= classname %> set<%= methodname %>(<%= get_property_class(property, classname) %> <%= vname %>) {
+		this.<%= vname%> = <%= vname %>;
+		return this;
+	}
+
+	/**
+	 * Getter for <%= vname %>
+	 */
+	public <%= get_property_class(property, classname) %> get<%= methodname %>() {
+		return this.<%= vname%>;
+	}
+
+<% end %>
+<% if data_type.extends %>
+<% extended_data_type = schema.data_types[data_type.extends] %>
+<% extended_data_type.properties.each do |name, property| %>
+<%
+   vname = validate_property_name(name)
+   methodname = validate_class_name(name)
+%>
+
+	/**
+	 * Setter for <%= vname %>
+	 */
+	public <%= classname %> set<%= methodname %>(<%= get_property_class(property, classname) %> <%= vname %>) {
+		this.<%= vname%> = <%= vname %>;
+		return this;
+	}
+
+	/**
+	 * Getter for <%= vname %>
+	 */
+	public <%= get_property_class(property, classname) %> get<%= methodname %>() {
+		return this.<%= vname%>;
+	}
+
+<% end %>
+<% end %>
+<% serialization_name = get_rootname_serialization(data_type, schema) if operation_input %>
+<%= render "templates/sdk.wsdlsoapserialize_java.erb", :classname => classname, :operation_input => operation_input, :serialization_name => serialization_name, :schema => schema, :data_type => data_type %>
+
+<%= render "templates/sdk.wsdlsoapdeserialize_java.erb", :classname => classname, :data_type => data_type %>
+
+}

@@ -1,0 +1,213 @@
+package <%= package %>;
+
+<% imports(data_type, schema, package, classname, "rest").each do |import| %>
+import <%= import %>;
+<% end %>
+
+public class <%= validate_class_name(classname) %> <%= "extends #{validate_class_name(data_type.extends)}" if data_type.extends %> {
+
+<% const_args = {} %>
+<% data_type.properties.each do |name, property| %>
+<% vname = validate_property_name(name) %>
+<% const_args[vname] = get_property_class(property, classname) if property.required %>
+	/**
+	 * <%= property.description %>
+	 */
+	private <%= get_property_class(property, classname) %> <%= vname %>;
+
+<% end %>
+<% if schema.services[classname] and !options[:skip_stub_operations] %>
+	/**
+	 * Returns the last request sent to the Service
+	 *
+	 * @return Last request sent to the server
+	 */
+	public static String getLastRequest() {
+		return PayPalResource.getLastRequest();
+	}
+
+	/**
+	 * Returns the last response returned by the Service
+	 *
+	 * @return Last response got from the Service
+	 */
+	public static String getLastResponse() {
+		return PayPalResource.getLastResponse();
+	}
+
+	/**
+	 * Initialize using InputStream(of a Properties file)
+	 *
+	 * @param is
+	 *            InputStream
+	 * @throws PayPalRESTException
+	 */
+	public static void initConfig(InputStream is) throws PayPalRESTException {
+		PayPalResource.initConfig(is);
+	}
+
+	/**
+	 * Initialize using a File(Properties file)
+	 *
+	 * @param file
+	 *            File object of a properties entity
+	 * @throws PayPalRESTException
+	 */
+	public static void initConfig(File file) throws PayPalRESTException {
+		PayPalResource.initConfig(file);
+	}
+
+	/**
+	 * Initialize using Properties
+	 *
+	 * @param properties
+	 *            Properties object
+	 */
+	public static void initConfig(Properties properties) {
+		PayPalResource.initConfig(properties);
+	}
+<% end %>
+	/**
+	 * Default Constructor
+	 */
+	public <%= validate_class_name(classname) %>() {
+	}
+
+<% if const_args.size > 0 %>
+	/**
+	 * Parameterized Constructor
+	 */
+	public <%= validate_class_name(classname) %>(<%= const_args.map{|name, type| "#{type} #{name}"}.join(", ") %>) {
+<% const_args.each do |name, type| %>
+		this.<%= name %> = <%= name %>;
+<% end %>
+	}
+
+<% end %>
+<% data_type.properties.each do |name, property| %>
+<% vname = validate_property_name(name) %>
+<% methodname = validate_class_name(name) %>
+
+	/**
+	 * Setter for <%= vname %>
+	 */
+	public <%= classname %> set<%= methodname %>(<%= get_property_class(property, classname) %> <%= vname %>) {
+		this.<%= vname%> = <%= vname %>;
+		return this;
+	}
+
+	/**
+	 * Getter for <%= vname %>
+	 */
+	public <%= get_property_class(property, classname) %> get<%= methodname %>() {
+		return this.<%= vname%>;
+	}
+
+<% end %>
+<% service = schema.services[classname] %>
+<% if service and !options[:skip_stub_operations] %>
+<% service.operations.each do |name, property| %>
+<% static = is_static_method(property) %>
+<% methodName = validate_method_name(name) %>
+<% hostIdCheck = check_host_id(classname, property) %>
+<% argumentHash = form_rest_api_args(classname, property, name) %>
+<% resourcePath = validate_path(property.path) %>
+<% pathParameters = generate_format_hash(classname, property, resourcePath) %>
+<% payLoad = get_payload(classname, property) %>
+<% if options[:gen_deprecated_methods] %>
+
+	/**
+	 * <%= property.description %>
+	 * @deprecated
+	 * @param accessToken
+	 *            Access Token used for the API call.<% if argumentHash.size > 0 %><% argumentHash.each do |name, type| %>
+	 * @param <%= name %>
+	 *            <%= type %><% end %><% end %>
+	 * @return <% if property.response %><%= property.response %><% end %>
+	 * @throws PayPalRESTException
+	 */
+	public<%= " static" if static %><% if property.response %> <%= validate_class_name(property.response) %><% else %> void<% end %> <%= methodName %>(String accessToken<% if argumentHash.size > 0 %>, <%= argumentHash.map{|name, type| "#{type.camelcase} #{name}"}.join(", ") %><% end %>) throws PayPalRESTException {
+		APIContext apiContext = new APIContext(accessToken);
+<% if property.response %>
+		return <%= methodName %>(apiContext<% if argumentHash.size > 0 %>, <%= argumentHash.map{|name, type| "#{name}"}.join(", ") %><% end %>);
+<% else %>
+		<%= methodName %>(apiContext<% if argumentHash.size > 0 %>, <%= argumentHash.map{|name, type| "#{name}"}.join(", ") %><% end %>);
+		return;
+<% end %>
+	}
+<% end %>
+
+	/**
+	 * <%= property.description %>
+	 * @param apiContext
+	 *            {@link APIContext} used for the API call.<% if argumentHash.size > 0 %><% argumentHash.each do |name, type| %>
+	 * @param <%= name %>
+	 *            <%= type %><% end %><% end %>
+	 * @return <% if property.response %><%= property.response %><% end %>
+	 * @throws PayPalRESTException
+	 */
+	public<%= " static" if static %><% if property.response %> <%= validate_class_name(property.response) %><% else %> void<% end %> <%= methodName %>(APIContext apiContext<% if argumentHash.size > 0 %>, <%= argumentHash.map{|name, type| "#{type.camelcase} #{name}"}.join(", ") %><% end %>) throws PayPalRESTException {
+		if (apiContext == null) {
+			throw new IllegalArgumentException("APIContext cannot be null");
+		}
+<% if options[:mandate_oauth] %>
+		if (apiContext.getAccessToken() == null || apiContext.getAccessToken().trim().length() <= 0) {
+			throw new IllegalArgumentException("AccessToken cannot be null or empty");
+		}
+<% end %>
+		if (apiContext.getHTTPHeaders() == null) {
+			apiContext.setHTTPHeaders(new HashMap<String, String>());
+		}
+		apiContext.getHTTPHeaders().put(Constants.HTTP_CONTENT_TYPE_HEADER, Constants.HTTP_CONTENT_TYPE_JSON);
+		apiContext.setSdkVersion(new SDKVersionImpl());
+<% if hostIdCheck %>
+		if (this.getId() == null) {
+			throw new IllegalArgumentException("Id cannot be null");
+		}
+<% end %>
+<% if argumentHash.size > 0 %>
+<% argumentHash.each do |name, type| %>
+<% if name != 'queryParameters' %>
+		if (<%= name%> == null) {
+			throw new IllegalArgumentException("<%= name%> cannot be null");
+		}
+<% end %>
+<% end %>
+<% end %>
+		Map<String, String> pathParameters = new HashMap<String, String>();
+<% pathParameters.each do |name, value| %>
+		pathParameters.put("<%= name %>", <%= value%>);
+<% end %>
+		String pattern = "<%= resourcePath %>";
+<% if property.type != 'POST' and property.type != 'PATCH' and property.type != 'PUT' %>
+		String resourcePath = RESTUtil.formatURIPath(pattern, pathParameters, queryParameters);
+<% else %>
+		String resourcePath = RESTUtil.formatURIPath(pattern, pathParameters);
+<% end %>
+		String payLoad = <%= payLoad %>;
+<% if property.response %>
+		return PayPalResource.configureAndExecute(apiContext, <%= "HttpMethod." + property.type %>, resourcePath, payLoad, <%= validate_class_name(property.response) %>.class);
+<% else %>
+		PayPalResource.configureAndExecute(apiContext, <%= "HttpMethod." + property.type %>, resourcePath, payLoad, null);
+		return;
+<% end %>
+	}
+
+<% end %>
+<% end %>
+<% if !options[:skip_stub_operations] %>
+	/**
+	 * Returns a JSON string corresponding to object state
+	 *
+	 * @return JSON representation
+	 */
+	public String toJSON() {
+		return JSONFormatter.toJSON(this);
+	}
+
+	@Override
+	public String toString() {
+		return toJSON();
+	}
+<% end %>
+}

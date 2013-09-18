@@ -1,0 +1,166 @@
+<% if operation_input %>
+		public String ToXMLString()
+		{
+			return ToXMLString("<%= serialization_name.split(':').first %>", "<%= serialization_name.split(':').last %>");
+		}
+<% end %>
+
+		/// <summary>
+		/// Serialize the object to XML String form
+		/// </summary>
+		public String ToXMLString(string prefix, string name)
+		{
+			StringBuilder sb = new StringBuilder();
+			if (name != null)
+			{
+<% if contains_attribute(data_type) %>
+				if (prefix != null)
+				{
+					sb.Append("<").Append(prefix + ":").Append(name);
+				}
+				else
+				{
+					sb.Append("<").Append(name);
+				}
+				sb.Append(GetAttributeAsXml());
+				sb.Append(">");
+<% else %>
+				if (prefix != null)
+				{
+					sb.Append("<").Append(prefix + ":").Append(name).Append(">");
+				}
+				else
+				{
+					sb.Append("<").Append(name).Append(">");
+				}
+<% end %>
+			}
+<% type = data_type %>
+<% while type %>
+<% type.properties.each do |name , definition| %>
+<% if !definition.attribute %>
+<% vname = validate_property_name(name, true) %>
+			if (this.<%= vname %> != null)
+			{
+<% if definition.array %>
+				for (int i = 0; i < this.<%= vname %>.Count; i++)
+				{
+<% if is_complex_type(definition.type, schema) || is_enum_type(definition.type, schema) %>
+<% if definition.enum %>
+					sb.Append("<");
+<% if should_qualify_name(definition.package, schema) %>
+					sb.Append("<%= definition.package %>:");
+<% end %>
+					sb.Append("<%= name %>>").Append(SDKUtil.EscapeInvalidXmlCharsRegex(ReflectionEnumUtil.GetDescription(this.<%= vname %>[i]))).Append("</");
+<% if should_qualify_name(definition.package, schema) %>
+					sb.Append("<%= definition.package %>:");
+<% end %>
+					sb.Append("<%= name %>>");
+<% else %>
+<% if should_qualify_name(definition.package, schema) %>
+					sb.Append(this.<%= vname %>[i].ToXMLString("<%= definition.package %>","<%= name %>"));
+<% else %>
+					sb.Append(this.<%= vname %>[i].ToXMLString(null,"<%= name %>"));
+<% end %>
+<% end %>
+<% else %>
+<% if definition.value == '1' %>
+					sb.Append(SDKUtil.EscapeInvalidXmlCharsRegex(<% if find_basic_type(definition.type) == 'double' %>Convert.ToString(Value[i], DefaultCulture)<% else %>Value[i]<% end %>));
+<% else %>
+					sb.Append("<");
+<% if should_qualify_name(definition.package, schema) %>
+					sb.Append("<%= definition.package %>:");
+<% end %>
+					sb.Append("<%= name %>>").Append(SDKUtil.EscapeInvalidXmlCharsRegex(<% if find_basic_type(definition.type) == 'double' %>Convert.ToString(this.<%= vname %>[i], DefaultCulture)<% else %>this.<%= vname %>[i]<% end %>));
+					sb.Append("</");
+<% if should_qualify_name(definition.package, schema) %>
+					sb.Append("<%= definition.package %>:");
+<% end %>
+					sb.Append("<%= name %>>");
+<% end %>					
+<% end %>
+				}
+<% else %>
+<% if is_complex_type(definition.type, schema) || is_enum_type(definition.type, schema) %>
+<% if definition.enum %>
+				sb.Append("<");
+<% if should_qualify_name(definition.package, schema) %>
+				sb.Append("<%= definition.package %>:");
+<% end %>
+				sb.Append("<%= name %>>").Append(SDKUtil.EscapeInvalidXmlCharsRegex(ReflectionEnumUtil.GetDescription(this.<%= vname %>))).Append("</");
+<% if should_qualify_name(definition.package, schema) %>
+				sb.Append("<%= definition.package %>:");
+<% end %>
+				sb.Append("<%= name %>>");
+<% else %>
+<% if should_qualify_name(definition.package, schema) %>
+				sb.Append(this.<%= vname %>.ToXMLString("<%= definition.package %>","<%= name %>"));
+<% else %>
+				sb.Append(this.<%= vname %>.ToXMLString(null, "<%= name %>"));
+<% end %>
+<% end %>
+<% else %>
+<% if definition.value == '1' %>
+				sb.Append(SDKUtil.EscapeInvalidXmlCharsRegex(<% if find_basic_type(definition.type) == 'double' %>Convert.ToString(Value, DefaultCulture)<% else %>Value<% end %>));
+<% else %>
+				sb.Append("<");
+<% if should_qualify_name(definition.package, schema) %>
+				sb.Append("<%= definition.package %>:");
+<% end %>
+				sb.Append("<%= name %>>");
+				sb.Append(SDKUtil.EscapeInvalidXmlCharsRegex(<% if find_basic_type(definition.type) == 'double' %>Convert.ToString(this.<%= vname %>, DefaultCulture)<% else %>this.<%= vname %><% end %>));
+				sb.Append("</");
+<% if should_qualify_name(definition.package, schema) %>
+				sb.Append("<%= definition.package %>:");
+<% end %>
+				sb.Append("<%= name %>>");
+<% end %>					
+<% end %>
+<% end %>
+			}
+<% end %>
+<% end %>
+<% type = schema.data_types[type.extends] %>
+<% end %>
+			if (name != null)
+			{
+				if (prefix != null)
+				{
+					sb.Append("</").Append(prefix + ":").Append(name).Append(">");
+				}
+				else
+				{
+					sb.Append("</").Append(name).Append(">");
+				}
+			}
+			return sb.ToString();
+		}
+
+<% if contains_attribute(data_type) %>
+	
+		/// <summary>
+		/// Serializes attributes if any
+		/// </summary>
+		private String GetAttributeAsXml()
+		{
+			StringBuilder sb = new StringBuilder();
+<% type = data_type %>
+<% while type %>
+<% type.properties.each do |name , definition| %>
+<% if definition.attribute %>
+<% vname = validate_property_name(name, true) %>
+			if (this.<%= vname %> != null)
+			{
+<% if definition.enum %>
+				sb.Append(" <%= name %>=\"").Append(SDKUtil.EscapeInvalidXmlCharsRegex(ReflectionEnumUtil.GetDescription(this.<%= vname %>))).Append("\"");
+<% else %>
+				sb.Append(" <%= name %>=\"").Append(SDKUtil.EscapeInvalidXmlCharsRegex(this.<%= vname %>)).Append("\"");			
+<% end %>
+			}
+<% end %>
+<% end %>
+<% type = schema.data_types[type.extends] %>
+<% end %>
+			return sb.ToString();
+		}
+<% end %>

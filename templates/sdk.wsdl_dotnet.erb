@@ -1,0 +1,72 @@
+<% operation_input = is_operation_input(data_type, schema) %>
+<% imports(data_type, schema, package, classname, "soap", operation_input).each do |import| %>
+using <%= import %>;
+<% end %>
+namespace <%= package %>
+{
+	public class <%= validate_class_name(classname) %><% if data_type.fault %> : System.Exception <% end %><% if operation_input %> : XMLMessageSerializer<% end %>
+	{
+
+		/// <summary>
+		/// Namespace of <%= classname %>
+		/// </summary>
+		public const string Namespace = "<%= data_type.package %>";
+
+		/// <summary>
+		/// Default US culture info used for decimal conversion
+		/// </summary>
+		private static CultureInfo DefaultCulture = new CultureInfo("en-US");
+
+<% const_args = {} %>
+
+<% type = data_type %>
+<% while type %>
+<% type.properties.each do |name, property| %>
+<% vname = validate_property_name(name, true) %>
+<% const_args[vname] = get_property_class(property, classname) if property.required %>
+		private <%= get_property_class(property, classname) %><%= '?' if (is_nullable_type(property) and !property.array) %> <%= vname %>Property<% if property.array %> = new <%= get_property_class(property, classname) %>()<% end %>;
+
+		/// <summary>
+		/// <%= property.description %>
+		/// </summary>
+		public <%= get_property_class(property, classname) %><%= '?' if (is_nullable_type(property) and !property.array) %> <%= vname %>
+		{
+			get
+			{
+				return this.<%= vname %>Property;
+			}
+			set
+			{
+				this.<%= vname %>Property = value;
+			}
+		}
+
+<% end %>
+<% type = schema.data_types[type.extends] %>
+<% end %>
+		/// <summary>
+		/// Default Constructor
+		/// </summary>
+		public <%= classname %>()
+		{
+		}
+
+<% if const_args.size > 0 %>
+		/// <summary>
+		/// Parameterized Constructor
+		/// </summary>
+		public <%= classname %>(<%= const_args.map{|name, type| "#{type} #{validate_property_as_argument(name)}"}.join(", ") %>)
+		{
+<% const_args.each do |name, type| %>
+			this.<%= name %> = <%= validate_property_as_argument(name) %>;
+<% end %>
+		}
+<% end %>
+
+<% serialization_name = get_rootname_serialization(data_type, schema) if operation_input %>
+<%= render "templates/sdk.wsdlsoapserialize_dotnet.erb", :classname => classname, :operation_input => operation_input, :serialization_name => serialization_name, :schema => schema, :data_type => data_type %>
+
+<%= render "templates/sdk.wsdlsoapdeserialize_dotnet.erb", :classname => classname, :data_type => data_type %>
+
+	}
+}

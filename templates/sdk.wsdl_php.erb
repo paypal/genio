@@ -1,0 +1,61 @@
+<?php
+namespace <%= package %>;
+<% imports(data_type, schema, package, classname, "soap").each do |import| %>
+use <%= import %>;
+<% end %>
+/**
+<%= comment_wrap(data_type.description, 60, ' * ') %>
+ */
+class <%= valid_class_name(classname) %> extends <% if data_type.fault %>PPXmlFaultMessage<% else %>PPXmlMessage<% end %> {
+<% const_args = {} %>  
+<% type = data_type %>
+<% while type %>
+<% type.properties.each do |name, property| %>
+<% vname = to_underscore(name) %>
+<% vtype = get_php_type(property, schema, classname) %>
+<% const_args[vname] = property.type if property.required %>
+	/**
+<%= comment_wrap(property.description, 60, "\t * ") %>
+	<% if property.array %>
+     * @array
+	<% end %>
+	 * @access public
+	<% if (property.value != '1' and !property.attribute) and !should_qualify_name(property.package, schema) %>
+	 * @namespace
+	<% elsif property.package.present? %>
+	 * @namespace <%= property.package %>
+	<% end %>
+	<% if property.attribute %>
+	 * @attribute
+	<% end %>
+	<% if property.value == '1' %>
+	 * @value
+	<% end %>
+	 * @var <%= "#{validated_package(schema.data_types[vtype].package)}\\" if schema.data_types[vtype] %><%= vtype %>
+	<% if vname != property.name %>
+	 * @name <%= property.name %>
+	<% end %>
+	 */
+	public $<%= vname %>;
+<% end %>
+<% type = schema.data_types[type.extends] %>
+<% end %>
+
+<% if const_args.size > 0 %>
+
+	/**
+	 * Constructor with mandatory properties
+	 *
+<% const_args.map.each do |name, type| %>
+     * @param <%= type %> $<%= name %>
+<% end %>
+	 */
+	public function __construct(<%= const_args.map{|name, type| "$#{name} = NULL"}.join(", ") %>) {
+<% const_args.each do |name, type| %>
+        $this-><%= name %> = $<%= name %>;
+<% end %>
+    }
+<% end %>
+
+<%= render "templates/sdk.wsdlsoapserialize_php.erb", :classname => classname, :schema => schema, :data_type => data_type %>
+}

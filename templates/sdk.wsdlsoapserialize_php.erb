@@ -1,0 +1,49 @@
+<% if (request_types(schema).include?(classname) or header_types(schema).include?(classname))  %>
+	public function toXMLString()
+	{
+		$str = '<<%= get_rootname_serialization(data_type, schema) %>>';
+<% if (should_qualify_name(schema.namespaces[data_type.package], schema)) %>
+<% prefix = schema.namespaces[data_type.package]  + ':' %>
+<% else %>
+<% prefix = '' %>
+<% end %>
+<% type = data_type %>
+<% while type %>
+<% type.properties.each do |name, property| %>
+		if($this-><%= property.name %> != NULL)
+		{
+<% if is_complex_type(property.type, schema) %>
+<% if property.max == 'unbounded' %>
+			foreach($this-><%= property.name %> as $item)
+			{
+				$str .= '<<%= prefix %><%= property.name %>>';
+				$str .= $item->toXMLString();
+				$str .= '</<%= prefix %><%= property.name %>>';
+			}
+<% else %>
+			$str .= '<<%= prefix %><%= property.name %>>';
+			$str .= $this-><%= property.name %>->toXMLString();
+			$str .= '</<%= prefix %><%= property.name %>>';
+<% end %>
+<% else %>
+<% if property.max == 'unbounded' %>
+			foreach($this-><%= property.name %> as $item)
+			{
+				$str .= '<<%= prefix %><%= property.name %>>';
+				$str .= $item;
+				$str .= '</<%= prefix %><%= property.name %>>';
+			}
+<% else %>
+			$str .= '<<%= prefix %><%= property.name %>>';
+			$str .= $this-><%= property.name %>;
+			$str .= '</<%= prefix %><%= property.name %>>';
+<% end %>
+<% end %>
+		}
+<% end %>
+<% type = schema.data_types[type.extends] %>
+<% end %>
+		$str .= '</<%= get_rootname_serialization(data_type, schema) %>>';
+		return $str;
+	}
+<% end %>

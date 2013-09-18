@@ -1,0 +1,74 @@
+<?php
+namespace <%= package %>;
+
+<% service_imports(schema, service, package).each do |import| %>
+use <%= import %>;
+<% end %>
+/**
+* AUTO GENERATED service wrapper class
+*/
+class <%= classname %> extends PPBaseService {
+
+	private static $SERVICE_NAME = "<%= classname %>";
+	private static $SERVICE_VERSION = "";
+	private static $SDK_NAME    = "";
+	private static $SDK_VERSION = "";
+
+	public function __construct() {
+		parent::__construct('<%= classname %>', 'SOAP');
+	}
+<% service.operations.each do |name, definition| %>
+<% methodname = validate_method_name(name) %>
+
+	/**
+	* <%= definition.description %>
+	* @param <%= get_namespace(schema.data_types[definition.request].package) %>\<%= definition.request %> $<%= valid_property_name(definition.request) %>
+	* @param PayPal\Core\PPApiContext $apiContext
+	* @return <%= get_namespace(schema.data_types[definition.response].package) %>\<%= definition.response %>
+<% if definition.fault %>
+	* @throws <%= get_namespace(schema.data_types[definition.fault].package) %>\<%= definition.fault %>
+<% end %>
+	*/
+	<% argument_array = get_wsdl_operation_arguments(definition) %>
+	public function <%= methodname %>(<% if argument_array.size > 0 %> <%= argument_array.join(', ') %><% end %>, $apiContext) {
+		
+		$apiContext->addHttpHeader("SOAPAction", '"<%= definition.soapAction || '""' %>"');
+	
+		$handlers = array(
+			new \PayPal\Handler\GenericSoapHandler($this->xmlNamespacePrefixProvider()),
+		);
+		$resp = $this->call('<%= classname %>', '<%= methodname %>', <% if argument_array.size > 0 %> <%= argument_array.join(', ') %><% end %>, $apiContext, $handlers);
+		
+		$ret = new <%= definition.response %>();
+<% if definition.fault %>
+		try {
+			$ret->init(PPUtils::xmlToArray($resp));
+		} catch (PPTransformerException $ex) {
+			$fault = new <%= definition.fault%>();
+			$fault->init(PPUtils::xmlToArray($resp));
+			throw $fault;
+		}
+<% else %>
+		$ret->init(PPUtils::xmlToArray($resp));
+<% end %>
+		return $ret;
+	}
+
+<% end %>
+
+
+	/**
+	 * fucntion with namespaces and corresponding prefixes used in SOAP request serialization
+	 */
+	public function xmlNamespacePrefixProvider(){
+
+			$namespace = "";
+<% schema.namespaces.each do |namespace, prefix| %>
+<% if prefix != '' %>
+			$namespace .= 'xmlns:<%= prefix %>="<%= namespace %>" ';
+<% end %>
+<% end %>
+
+			return $namespace;
+	}
+}

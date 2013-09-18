@@ -1,0 +1,110 @@
+	/**
+	 * Checks whether the node is empty space
+	 */
+	private  boolean isWhitespaceNode(Node n) {
+		if (n.getNodeType() == Node.TEXT_NODE) {
+			String val = n.getNodeValue();
+			return val.trim().length() == 0;
+		} else if (n.getNodeType() == Node.ELEMENT_NODE ) {
+			return (n.getChildNodes().getLength() == 0);
+		} else {
+			return false;
+		}
+	}
+
+	/**
+	 * Constructor using a Node parameter
+	 */	
+	public <%= classname %> (Node node) throws XPathExpressionException {
+		XPathFactory factory = XPathFactory.newInstance();
+		XPath xpath = factory.newXPath();
+		Node childNode = null;
+		NodeList nodeList = null;
+<% type = data_type %>
+<% while type %>
+<% type.properties.each do |name , definition| %>
+<% vname = validate_property_name(name) %>
+<% if definition.array %>
+		nodeList = (NodeList) xpath.evaluate("<%= name %>", node, XPathConstants.NODESET);
+		if (nodeList != null && nodeList.getLength() > 0) {
+			for (int i = 0; i < nodeList.getLength(); i++) {
+				Node subNode = nodeList.item(i);
+<% if is_complex_type(definition.type, schema) || is_enum_type(definition.type, schema) %>
+<% if definition.enum %>
+				String value = subNode.getTextContent();
+				this.<%= vname %>.add(<%= validate_class_name(definition.type) %>.fromValue(value));
+<% else %>
+				this.<%= vname %>.add(new <%= validate_class_name(definition.type) %>(subNode));
+<% end %>
+<% else %>
+				String value = subNode.getTextContent();
+<% if find_basic_type(definition.type) == 'String' %>
+				this.<%= vname %>.add(value);
+<% elsif find_basic_type(definition.type) == 'Integer' %>
+				this.<%= vname %>.add(Integer.valueOf(value));
+<% elsif find_basic_type(definition.type) == 'Boolean' %>
+				this.<%= vname %>.add(Boolean.valueOf(value));
+<% elsif find_basic_type(definition.type) == 'Double' %>
+				this.<%= vname %>.add(Double.valueOf(value));
+<% elsif find_basic_type(definition.type) == 'Float' %>
+				this.<%= vname %>.add(Float.valueOf(value));
+<% end %>
+<% end %>
+			}
+		}
+<% else %>
+<% if is_complex_type(definition.type, schema) || is_enum_type(definition.type, schema) %>
+<% if definition.enum %>
+<% if definition.attribute %>
+		childNode = (Node) xpath.evaluate("@<%= name %>", node, XPathConstants.NODE);
+		if (childNode != null) {
+		    this.<%= vname %> = <%= validate_class_name(definition.type) %>.fromValue(childNode.getNodeValue());
+		}
+<% else %>
+		childNode = (Node) xpath.evaluate("<%= name %>", node, XPathConstants.NODE);
+		if (childNode != null && !isWhitespaceNode(childNode)) {
+		    this.<%= vname %> = <%= validate_class_name(definition.type) %>.fromValue(childNode.getTextContent());
+		}
+<% end %>
+<% else %>
+		childNode = (Node) xpath.evaluate("<%= name %>", node, XPathConstants.NODE);
+        if (childNode != null && !isWhitespaceNode(childNode)) {
+		    this.<%= vname %> =  new <%= validate_class_name(definition.type) %>(childNode);
+		}
+<% end %>
+<% else %>
+<% if definition.value == '1' %>
+		String value = node.getTextContent();
+<% if find_basic_type(definition.type) == 'String' %>
+		this.<%= vname %> = value;
+<% elsif find_basic_type(definition.type) == 'Integer' %>
+		this.<%= vname %> = Integer.valueOf(value);
+<% elsif find_basic_type(definition.type) == 'Boolean' %>
+		this.<%= vname %> = Boolean.valueOf(value);
+<% elsif find_basic_type(definition.type) == 'Double' %>
+		this.<%= vname %> = Double.valueOf(value);
+<% elsif find_basic_type(definition.type) == 'Float' %>
+		this.<%= vname %> = Float.valueOf(value);
+<% end %>
+<% else %>
+		childNode = (Node) xpath.evaluate("<%= name %>", node, XPathConstants.NODE);
+		if (childNode != null && !isWhitespaceNode(childNode)) {
+<% if find_basic_type(definition.type) == 'String' %>
+			this.<%= vname %> = childNode.getTextContent();
+<% elsif find_basic_type(definition.type) == 'Integer' %>
+			this.<%= vname %> = Integer.valueOf(childNode.getTextContent());
+<% elsif find_basic_type(definition.type) == 'Boolean' %>
+			this.<%= vname %> = Boolean.valueOf(childNode.getTextContent());
+<% elsif find_basic_type(definition.type) == 'Double' %>
+			this.<%= vname %> = Double.valueOf(childNode.getTextContent());
+<% elsif find_basic_type(definition.type) == 'Float' %>
+			this.<%= vname %> = Float.valueOf(childNode.getTextContent());
+<% end %>		
+		}
+<% end %>
+<% end %>
+<% end %>
+<% end %>
+<% type = schema.data_types[type.extends] %>
+<% end %>
+	}

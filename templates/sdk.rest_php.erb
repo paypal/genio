@@ -1,0 +1,102 @@
+<?php
+<% service = schema.services[classname] %>
+namespace <%= package %>;
+
+<% imports(data_type, schema, package, classname, "rest").each do |import| %>
+use <%= import %>;
+<% end %>
+
+class <%= classname %> <%= data_type.extends ? "extends #{valid_class_name(data_type.extends)} " : "extends PPModel " %><%= "implements IResource " if service %>{
+<% if service %>
+
+<% end %>
+<% data_type.properties.each do |name, property| %>
+<% vname = to_underscore(name) %>
+<% vtype = get_php_type(property, schema, classname) %>
+	/**
+	 * <%= property.description %>
+	 *
+	<% if property.array %>
+	 * @array
+	<% end %>
+	 * @param <%= "#{get_namespace(schema.data_types[vtype].package || schema.endpoint )}\\" if schema.data_types[vtype] %><%= vtype %> $<%= name %>
+	 */
+	public function set<%= valid_class_name(name) %>(<%if property.array %>array <%end%>$<%= vname %>) {
+		<% if vname != name%>
+		$this->{"<%= name %>"} = $<%= vname %>;
+		<% else %>
+		$this-><%= vname %> = $<%= vname %>;
+		<% end %>
+		return $this;
+	}
+
+	/**
+	 * <%= property.description %>
+	 *
+	 * @return <%= "#{get_namespace(schema.data_types[vtype].package || schema.endpoint )}\\" if schema.data_types[vtype] %><%= vtype %>
+	 */
+	public function get<%= valid_class_name(name) %>() {
+		<% if vname != name%>
+		return $this->{"<%= name %>"};
+		<% else %>
+		return $this-><%= vname %>;
+		<% end %>
+	}
+
+<% end %>
+<% if service %>
+<% service.operations.each do |name, property| %>
+<% static = is_static_method(property) %>
+<% hostId_check = check_host_id(classname, property) %>
+<% argument_hash = form_arguments(classname, property, name) %>
+<% object_array = get_object_array(classname, name, property, argument_hash) %>
+<% payload = get_payload(classname, property) %>
+	/*
+	 * <%= property.description %>
+	 *
+<% argument_hash.each do |name, type| %>
+	 * @param <%= type %> $<%= name %>
+<% end %>
+<% if( property.parameters && allowed_params(property.parameters).size > 0 )%>
+	 * allowed queryparameters <%= allowed_params(property.parameters).map{|k,v| "'#{k}'" }.join(", ") %>
+<% end %>
+	 * @param PayPal\Rest\ApiContext $apiContext is the APIContext for this call. It can be used to pass dynamic configuration, credentials, and additional headers.
+	 * @return <%= "#{get_namespace(schema.data_types[property.response].package || schema.endpoint )}\\" if schema.data_types[property.response] %><%= property.response || 'string' %>
+	 */
+	public<%= " static" if static %> function <%= validate_function_name(name) %>(<% if argument_hash.size > 0 %><%= argument_hash.map{|name, type| type == "array" ? "array $#{name}" : "$#{name}"}.join(", ") %>, <% end %>$apiContext) {
+		<% if hostId_check %>
+		if ($this->getId() == null) {
+			throw new \InvalidArgumentException("Id cannot be null");
+		}
+		<% end %>
+		<% if argument_hash.size > 0 %>
+		<% argument_hash.each do |name, type| %>
+		<% if name != 'queryParameters'%>
+
+		if ($<%= name %> == null<%= " || strlen($#{name}) == 0" if type == "string" %>) {
+			throw new \InvalidArgumentException("<%= name%> cannot be null or empty");
+		}
+		<% end %>
+		<% end %>
+		<% end %>
+		$payload = <%= payload %>;
+		$call = new PPRestCall($apiContext);
+		$json = $call->execute(array('PayPal\Rest\RestHandler'), <%= process_path_with_placeholders(classname, name, property.path, hostId_check, argument_hash, property.parameters) %>, "<%= property.type %>", $payload);
+		<% if property.request == classname %>
+		$this->fromJson($json);
+		return $this;
+		<% elsif property.response %>
+		<% if property.response == "string" %>
+		return $json;
+		<% else %>
+		$ret = new <%= property.response %>();
+		$ret->fromJson($json);
+		return $ret;
+		<% end %>
+		<% else %>
+		return $json;
+		<% end %>
+	}
+	<% end %>
+<% end %>
+}

@@ -1,0 +1,136 @@
+<% service_imports(schema, service, package).each do |import| %>
+using <%= import %>;
+<% end %>
+namespace <%= package %>
+{
+	public class <%= validate_class_name(classname) %> : BasePayPalService
+	{
+
+		static <%= validate_class_name(classname) %>()
+		{
+			DefaultSOAPAPICallHandler.XMLNamespaceProvider = new XmlNamespacePrefixProvider();
+		}
+
+		/// <summary>
+		/// Service Version
+		/// </summary>
+		private const string ServiceVersion = "";
+
+		/// <summary>
+		/// Service Name
+		/// </summary>
+		private const string ServiceName = "<%= classname %>";
+
+		/// <summary>
+		/// SDK Name
+		/// </summary>
+		private const string SDKName = "";
+
+		/// <summary>
+		/// SDK Version
+		/// </summary>
+		private const string SDKVersion = "";
+
+		/// <summary>
+		/// Default constructor for loading configuration from *.Config file
+		/// </summary>
+		public <%= validate_class_name(classname) %>() : base()
+		{
+
+		}
+
+		/// <summary>
+		/// constructor for passing in a dynamic configuration object
+		/// </summary>
+		public <%= validate_class_name(classname) %>(Dictionary<string, string> config) : base(config)
+		{
+
+		}
+
+<% service.operations.each do |name, definition| %>
+<% methodname = validate_method_name(name) %>
+<% argumentHash = get_wsdl_operation_arguments(definition) %>
+		/// <summary>
+		///
+	 	/// </summary>
+<% if argumentHash.size > 0 %>
+<% argumentHash.each do |name, type| %>
+		/// <param name="<%= name %>"><%= type %> request argument</param>
+<% end %>
+<% end %>
+		/// <param name="apiContext">APIContext argument</param>
+		public <%= definition.response %> <%= methodname %>(<% if argumentHash.size > 0 %><%= argumentHash.map{|name, type| "#{type.camelcase} #{name}"}.join(", ") %><% end %>, APIContext apiContext)
+		{
+			if (apiContext == null)
+			{
+				throw new ArgumentNullException("APIContext is null");
+			}
+			if (apiContext.HTTPHeaders == null)
+			{
+				apiContext.HTTPHeaders = new Dictionary<string, string>();
+			}
+<%
+   if definition.soapAction.blank?
+     soapAction = "\"\""
+   else
+     soapAction = definition.soapAction
+   end
+%>
+			apiContext.HTTPHeaders.Add("SOAPAction", <%= soapAction.inspect %>);
+			DefaultSOAPAPICallHandler apiCallPreHandler = new DefaultSOAPAPICallHandler(<% if argumentHash.size > 0 %><%= argumentHash.map{|name, type| "#{name}"}.join(", ") %><% end %>, apiContext, this.config, "<%= name %>");
+			XmlDocument xmlDocument = new XmlDocument();
+			string response = Call(apiCallPreHandler);
+			xmlDocument.LoadXml(response);
+			<%= definition.response %> <%= validate_property_as_argument(definition.response) %> = null;
+			XmlNode xmlNode = xmlDocument.SelectSingleNode("*[local-name()='Envelope']/*[local-name()='Body']/*[local-name()='<%= definition.response_property.name %>']");
+			if (xmlNode != null)
+            {
+                <%= validate_property_as_argument(definition.response) %> = new <%= definition.response %>(xmlNode);
+            }
+<% if definition.fault %>
+            else
+            {
+                xmlNode = xmlDocument.SelectSingleNode("*[local-name()='Envelope']/*[local-name()='Body']/*[local-name()='Fault']/*[local-name()='detail']/*[local-name()='<%= definition.fault %>']");
+                if (xmlNode != null)
+                {
+                    <%= definition.fault_property.name %> faultMessage = new <%= definition.fault_property.name %>(xmlNode);
+                    throw faultMessage;
+                }
+				else
+				{
+					throw new Exception("Unable to parse response, response = " + response);
+				}
+
+            }
+<% end %>
+			return <%= validate_property_as_argument(definition.response) %>;
+		}
+
+
+<% end %>
+
+		private class XmlNamespacePrefixProvider : DefaultSOAPAPICallHandler.XmlNamespaceProvider
+		{
+
+			/// <summary>
+			/// Namespace Dictionary instance
+			/// </summary>
+			private Dictionary<string, string> namespaceDictionary;
+
+			public XmlNamespacePrefixProvider()
+			{
+				namespaceDictionary = new Dictionary<string, string>();
+<% schema.namespaces.each do |namespace, prefix| %>
+<% if prefix != '' %>
+				namespaceDictionary.Add("<%= prefix %>", "<%= namespace %>");
+<% end %>
+<% end %>
+			}
+
+			public Dictionary<string, string> GetNamespaceDictionary()
+			{
+				return namespaceDictionary;
+			}
+		}
+	}
+}

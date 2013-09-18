@@ -1,0 +1,127 @@
+package <%= package %>;
+
+<% service_imports(schema, service, package).each do |import| %>
+import <%= import %>;
+<% end %>
+
+public class <%= validate_class_name(classname) %> extends BaseService {
+
+	static {
+		DefaultSOAPAPICallHandler.setXmlNamespaceProvider(new XmlNamespacePrefixProvider());
+	}
+
+	// Service Version
+	public static final String SERVICE_VERSION = "";
+
+	// Service Name
+	public static final String SERVICE_NAME = "<%= classname %>";
+
+	//SDK Name
+	private static final String SDK_NAME = "";
+
+	//SDK Version
+	private static final String SDK_VERSION = "";
+
+	/**
+	 * Default <code><%= validate_class_name(classname) %></code> Constructor.
+	 * Initializes the SDK system with the default configuration file named
+	 * 'sdk_config.properties' found in the class-path
+	 */
+	public <%= validate_class_name(classname) %>() {
+		super.initializeToDefault();
+	}
+
+	/**
+	 * <code><%= validate_class_name(classname) %></code> that uses the supplied
+	 * {@link Properties} to initialize the SDK system. For values that the
+	 * properties should holdconsult the documentation.
+	 * The initialization context is maintained only for
+	 * this instance of the class. Service level configuration.
+	 *
+	 * @param properties
+	 *            {@link Properties} object
+	 */
+	public <%= validate_class_name(classname) %>(Properties properties) {
+		super(properties);
+	}
+
+	/**
+	 * <code><%= validate_class_name(classname) %></code> that uses the supplied
+	 * {@link Map} to initialize the SDK system. For values that the
+	 * configurationMap should hold consult the documentation.
+	 * The initialization context is maintained only for
+	 * this instance of the class. Service level configuration.
+	 *
+	 * @param configurationMap
+	 *            {@link Map} object
+	 */
+	public <%= validate_class_name(classname) %>(Map<String, String> configurationMap) {
+		super(configurationMap);
+	}
+
+<% service.operations.each do |name, definition| %>
+<% methodname = validate_method_name(name) %>
+<% argumentHash = get_wsdl_operation_arguments(definition) %>
+	public <%= definition.response %> <%= methodname %>(<% if argumentHash.size > 0 %><%= argumentHash.map{|name, type| "#{type.camelcase} #{name}"}.join(", ") %><% end %>, BaseAPIContext baseAPIContext) throws SAXException, IOException, ParserConfigurationException, InvalidResponseDataException, HttpErrorException, ClientActionRequiredException, InvalidCredentialException, MissingCredentialException, OAuthException, SSLConfigurationException, InterruptedException {
+		if (baseAPIContext == null) {
+			throw new IllegalArgumentException("BaseAPIContext is null");
+		}
+		if (baseAPIContext.getHTTPHeaders() == null) {
+			baseAPIContext.setHTTPHeaders(new HashMap<String, String>());
+		}
+<%
+   if definition.soapAction.blank?
+     soapAction = "\"\""
+   else
+     soapAction = definition.soapAction
+   end
+%>
+		baseAPIContext.getHTTPHeaders().put("SOAPAction", <%= soapAction.inspect %>);
+		APICallPreHandler apiCallPreHandler = new DefaultSOAPAPICallHandler(<% if argumentHash.size > 0 %><%= argumentHash.map{|name, type| "#{name}"}.join(", ") %><% end %>, baseAPIContext, this.configurationMap, "<%= name %>");
+		String response = call(apiCallPreHandler);
+		InputSource inStream = new InputSource();
+		inStream.setCharacterStream(new StringReader((String) response));
+		try {
+			Node node = (Node) XPathFactory.newInstance().newXPath().evaluate("Envelope/Body/<%= definition.response_property.name %>", DocumentBuilderFactory.newInstance().newDocumentBuilder().parse(inStream), XPathConstants.NODE);
+			return new <%= definition.response %>(node);
+		} catch (XPathExpressionException exe) {
+<% if definition.fault %>
+			try {
+				inStream = new InputSource();
+				inStream.setCharacterStream(new StringReader((String) response));
+				Node node = (Node) XPathFactory.newInstance().newXPath().evaluate("Envelope/Body/Fault/detail/<%= definition.fault %>", DocumentBuilderFactory.newInstance().newDocumentBuilder().parse(inStream), XPathConstants.NODE);
+				<%= definition.fault_property.name %> faultException =  new <%= definition.fault_property.name %>(node);
+				throw faultException;
+			} catch (XPathExpressionException e) {
+				throw new RuntimeException("Unable to parse response", e);
+			}
+<% else %>
+			throw new RuntimeException("Unable to parse response", exe);
+<% end %>
+		}
+	}
+
+<% end %>
+
+	/**
+	 * Implementation of DefaultSOAPAPICallHandler.XmlNamespaceProvider
+	 */
+	private static class XmlNamespacePrefixProvider implements XmlNamespaceProvider {
+
+		private Map<String, String> namespaceMap;
+
+		public XmlNamespacePrefixProvider() {
+			namespaceMap = new HashMap<String, String>();
+<% schema.namespaces.each do |namespace, prefix| %>
+<% if prefix != '' %>
+			namespaceMap.put("<%= prefix %>", "<%= namespace %>");
+<% end %>
+<% end %>
+		}
+
+		public Map<String, String> getNamespaceMap() {
+			return namespaceMap;
+		}
+	}
+
+}

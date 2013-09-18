@@ -1,0 +1,14 @@
+using System;
+using System.ComponentModel;
+namespace <%= package %>
+{
+	[Serializable]
+	public enum <%= classname %>
+	{
+
+<% definition["values"].each do |value| %>
+		[Description("<%= value %>")]<%= validate_enum_name(value.upcase) %><% if value != definition["values"].last %>,<% end %>
+
+<% end %>
+	}
+}

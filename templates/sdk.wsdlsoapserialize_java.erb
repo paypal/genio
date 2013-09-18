@@ -1,0 +1,152 @@
+<% if operation_input %>
+	public String toXMLString() {
+		return toXMLString("<%= serialization_name.split(':').first %>", "<%= serialization_name.split(':').last %>");
+	}
+<% end %>
+
+	/**
+	 * Serialize the object to XML String form
+	 * @param prefix
+	 *           Namespace prefix to use during serialization
+	 * @param name
+	 *           Name used for serialization
+	 */
+	public String toXMLString(String prefix, String name) {
+		StringBuilder sb = new StringBuilder();
+		if (name != null) {
+<% if contains_attribute(data_type) %>
+			if (prefix != null) {
+				sb.append("<").append(prefix + ":").append(name);
+			} else {
+				sb.append("<").append(name);
+			}
+			sb.append(getAttributeAsXml());
+			sb.append(">");
+<% else %>
+			if (prefix != null) {
+				sb.append("<").append(prefix + ":").append(name).append(">");
+			} else {
+				sb.append("<").append(name).append(">");
+			}
+<% end %>
+		}
+<% type = data_type %>
+<% while type %>
+<% type.properties.each do |name , definition| %>
+<% if !definition.attribute %>
+<% vname = validate_property_name(name) %>
+		if (this.<%= vname %> != null) {
+<% if definition.array %>
+			for (int i=0; i < this.<%= vname %>.size(); i++) {
+<% if is_complex_type(definition.type, schema) || is_enum_type(definition.type, schema) %>
+<% if definition.enum %>
+				sb.append("<");
+<% if should_qualify_name(definition.package, schema) %>
+				sb.append("<%= definition.package %>:");
+<% end %>
+				sb.append("<%= name %>>").append(SDKUtil.escapeInvalidXmlCharsRegex(this.<%= vname %>.get(i).getValue())).append("</");
+<% if should_qualify_name(definition.package, schema) %>
+				sb.append("<%= definition.package %>:");
+<% end %>
+				sb.append("<%= name %>>");
+<% else %>
+<% if should_qualify_name(definition.package, schema) %>
+				sb.append(this.<%= vname %>.get(i).toXMLString("<%= definition.package %>","<%= name %>"));
+<% else %>
+				sb.append(this.<%= vname %>.get(i).toXMLString(null,"<%= name %>"));
+<% end %>
+<% end %>
+<% else %>
+<% if definition.value == '1' %>
+				sb.append(SDKUtil.escapeInvalidXmlCharsRegex(value.get(i)));
+<% else %>
+				sb.append("<");
+<% if should_qualify_name(definition.package, schema) %>
+				sb.append("<%= definition.package %>:");
+<% end %>
+				sb.append("<%= name %>>").append(SDKUtil.escapeInvalidXmlCharsRegex(this.<%= vname %>.get(i)));
+				sb.append("</");
+<% if should_qualify_name(definition.package, schema) %>
+				sb.append("<%= definition.package %>:");
+<% end %>
+				sb.append("<%= name %>>");
+<% end %>					
+<% end %>
+			}
+<% else %>
+<% if is_complex_type(definition.type, schema) || is_enum_type(definition.type, schema) %>
+<% if definition.enum %>
+			sb.append("<");
+<% if should_qualify_name(definition.package, schema) %>
+			sb.append("<%= definition.package %>:");
+<% end %>
+			sb.append("<%= name %>>").append(SDKUtil.escapeInvalidXmlCharsRegex(this.<%= vname %>.getValue())).append("</");
+<% if should_qualify_name(definition.package, schema) %>
+			sb.append("<%= definition.package %>:");
+<% end %>
+			sb.append("<%= name %>>");
+<% else %>
+<% if should_qualify_name(definition.package, schema) %>
+			sb.append(this.<%= vname %>.toXMLString("<%= definition.package %>","<%= name %>"));
+<% else %>
+			sb.append(this.<%= vname %>.toXMLString(null, "<%= name %>"));
+<% end %>
+<% end %>
+<% else %>
+<% if definition.value == '1' %>
+			sb.append(SDKUtil.escapeInvalidXmlCharsRegex(value));
+<% else %>
+			sb.append("<");
+<% if should_qualify_name(definition.package, schema) %>
+			sb.append("<%= definition.package %>:");
+<% end %>
+			sb.append("<%= name %>>");
+			sb.append(SDKUtil.escapeInvalidXmlCharsRegex(this.<%= vname %>));
+			sb.append("</");
+<% if should_qualify_name(definition.package, schema) %>
+			sb.append("<%= definition.package %>:");
+<% end %>
+			sb.append("<%= name %>>");
+<% end %>					
+<% end %>
+<% end %>
+		}
+<% end %>
+<% end %>
+<% type = schema.data_types[type.extends] %>
+<% end %>
+		if (name != null) {
+			if (prefix != null) {
+				sb.append("</").append(prefix + ":").append(name).append(">");
+			} else {
+				sb.append("</").append(name).append(">");
+			}
+		}
+		return sb.toString();
+	}
+
+<% if contains_attribute(data_type) %>
+	/**
+	 * Serializes attributes if any
+	 */
+	private String getAttributeAsXml() {
+		StringBuilder sb = new StringBuilder();
+<% type = data_type %>
+<% while type %>
+<% type.properties.each do |name , definition| %>
+<% if definition.attribute %>
+<% vname = validate_property_name(name) %>
+		if (this.<%= vname %> != null) {
+<% if definition.enum %>
+			sb.append(" <%= name %>=\"").append(SDKUtil.escapeInvalidXmlCharsRegex(this.<%= vname %>.getValue())).append("\"");
+<% else %>
+			sb.append(" <%= name %>=\"").append(SDKUtil.escapeInvalidXmlCharsRegex(this.<%= vname %>)).append("\"");			
+<% end %>
+		}
+<% end %>
+<% end %>
+<% type = schema.data_types[type.extends] %>
+<% end %>
+		return sb.toString();
+	}
+<% end %>

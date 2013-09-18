@@ -1,0 +1,29 @@
+package <%= package %>;
+
+public enum <%= classname %> {
+
+<% definition["values"].each do |value| %>
+
+	<%= validate_enum_name(value.upcase) %>("<%= value %>")<% if value != definition["values"].last %>,<% else %>;<% end %>
+<% end %>
+
+	private String value;
+
+	private <%= classname %> (String value) {
+		this.value = value;
+	}
+
+	public String getValue(){
+		return value;
+	}
+
+	public static <%= classname %> fromValue(String v) {
+		for (<%= classname %> c : values()) {
+			if (c.value.equals(v)) {
+				return c;
+			}
+		}
+		throw new IllegalArgumentException(v);
+	}
+
+}

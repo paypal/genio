@@ -1,0 +1,156 @@
+<% imports(data_type, schema, package, classname, "rest").each do |import| %>
+using <%= import %>;
+<% end %>
+
+namespace <%= package %>
+{
+	public class <%= validate_class_name(classname) %><%= " : #{validate_class_name(data_type.extends)}" if data_type.extends %>
+	{
+<% const_args = {} %>
+<% data_type.properties.each do |name, property| %>
+<% vname = validate_property_name(name) %>
+<% const_args[vname] = get_property_class(property, classname) if property.required %>
+		private <%= get_property_class(property, classname) %><%= '?' if (is_nullable_type(property) and !property.array) %> <%= vname %>Property;
+
+		/// <summary>
+		/// <%= property.description %>
+		/// </summary>
+		[JsonProperty(NullValueHandling = NullValueHandling.Ignore)]
+		public <%= get_property_class(property, classname) %><%= '?' if (is_nullable_type(property) and !property.array) %> <%= vname %>
+		{
+			get
+			{
+				return this.<%= vname %>Property;
+			}
+			set
+			{
+				this.<%= vname %>Property = value;
+			}
+		}
+
+<% end %>
+		/// <summary>
+		/// Default Constructor
+		/// </summary>
+		public <%= validate_class_name(classname) %>()
+		{
+		}
+
+<% if const_args.size > 0 %>
+		/// <summary>
+		/// Parameterized Constructor
+		/// </summary>
+		public <%= validate_class_name(classname) %>(<%= const_args.map{|name, type| "#{type} #{name}"}.join(", ") %>)
+		{
+<% const_args.each do |name, type| %>
+			this.<%= name %> = <%= name %>;
+<% end %>
+		}
+<% end %>
+
+<% service = schema.services[classname] %>
+<% if service %>
+<% service.operations.each do |name, property| %>
+<% static = is_static_method(property) %>
+<% hostIdCheck = check_host_id(classname, property) %>
+<% methodName = validate_method_name(name) %>
+<% argumentHash = form_rest_api_args(classname, property, name) %>
+<% resourcePath = validate_path(property.path) %>
+<% pathParameters = generate_format_hash(classname, property, resourcePath) %>
+<% payLoad = get_payload(classname, property) %>
+<% if options[:gen_deprecated_methods] %>
+
+		/// <summary>
+		/// <%= property.description %>
+		/// </summary>
+		/// <param name="accessToken">Access Token used for the API call.</param><% if argumentHash.size > 0 %><% argumentHash.each do |name, type| %>
+		/// <param name="<%= name %>"><%= type %></param><% end %><% end %>
+		/// <returns><% if property.response %><%= property.response %><% end %></returns>
+		public<%= " static" if static %><% if property.response %> <%= validate_class_name(property.response) %><% else %> void<% end %> <%= methodName %>(string accessToken<% if argumentHash.size > 0 %>, <%= argumentHash.map{|name, type| "#{type} #{name}"}.join(", ") %><% end %>)
+		{
+			APIContext apiContext = new APIContext(accessToken);
+<% if property.response %>
+			return <%= methodName %>(apiContext<% if argumentHash.size > 0 %>, <%= argumentHash.map{|name, type| "#{name}"}.join(", ") %><% end %>);
+<% else %>
+			<%= name.camelcase %>(apiContext<% if argumentHash.size > 0 %>, <%= argumentHash.map{|name, type| "#{name}"}.join(", ") %><% end %>);
+			return;
+<% end %>
+		}
+<% end %>
+
+		/// <summary>
+		/// <%= property.description %>
+		/// </summary>
+		/// <param name="apiContext">APIContext used for the API call.</param><% if argumentHash.size > 0 %><% argumentHash.each do |name, type| %>
+		/// <param name="<%= name %>"><%= type %></param><% end %><% end %>
+		/// <returns><% if property.response %><%= property.response %><% end %></returns>
+		public<%= " static" if static %><% if property.response %> <%= validate_class_name(property.response) %><% else %> void<% end %> <%= methodName %>(APIContext apiContext<% if argumentHash.size > 0 %>, <%= argumentHash.map{|name, type| "#{type} #{name}"}.join(", ") %><% end %>)
+		{
+		    if (apiContext == null)
+			{
+				throw new ArgumentNullException("APIContext cannot be null");
+			}
+<% if options[:mandate_oauth] %>
+			if (string.IsNullOrEmpty(apiContext.AccessToken))
+			{
+				throw new ArgumentNullException("AccessToken cannot be null or empty");
+			}
+<% end %>
+            if (apiContext.HTTPHeaders == null)
+			{
+				apiContext.HTTPHeaders = new Dictionary<string, string>();
+			}
+			apiContext.HTTPHeaders.Add(BaseConstants.CONTENT_TYPE_HEADER, BaseConstants.CONTENT_TYPE_JSON);
+			apiContext.SdkVersion = new SDKVersionImpl();
+<% if hostIdCheck %>
+			if (this.id == null)
+			{
+				throw new ArgumentNullException("Id cannot be null");
+			}
+<% end %>
+<% if argumentHash.size > 0 %>
+<% argumentHash.each do |name, type| %>
+<% if name != 'queryParameters' %>
+			if (<%= name %> == null)
+			{
+				throw new ArgumentNullException("<%= name%> cannot be null");
+			}
+<% end %>
+<% end %>
+<% end %>
+			Dictionary<string, string> pathParameters = new Dictionary<string, string>();
+<% pathParameters.each do |name, value| %>
+			pathParameters.Add("<%= name %>", <%= value %>);
+<% end %>
+			string pattern = "<%= resourcePath %>";
+<% if property.type != 'POST' and property.type != 'PATCH' and property.type != 'PUT' %>
+			string resourcePath = SDKUtil.FormatURIPath(pattern, pathParameters, queryParameters);
+<% else %>
+			string resourcePath = SDKUtil.FormatURIPath(pattern, pathParameters);
+<% end %>
+			string payLoad = <%= payLoad %>;
+<% if property.response %>
+			return PayPalResource.ConfigureAndExecute<<%= validate_class_name(property.response) %>>(apiContext, <%= "HttpMethod." + property.type %>, resourcePath, payLoad);
+<% else %>
+			PayPalResource.ConfigureAndExecute<object>(apiContext, <%= "HttpMethod." + property.type %>, resourcePath, payLoad);
+			return;
+<% end %>
+		}
+
+<% end %>
+<% end %>
+		/// <summary>
+		/// Converts the object to JSON string
+		/// </summary>
+		public string ConvertToJson()
+		{
+			return JsonFormatter.ConvertToJson(this);
+		}
+
+		public override string ToString()
+		{
+			return ConvertToJson();
+		}
+
+	}
+}

@@ -1,0 +1,121 @@
+		/// <summary>
+		/// Checks whether the node is empty space
+		/// </summary>
+		public static bool IsWhiteSpaceNode(XmlNode n)
+		{
+			if (n.NodeType == XmlNodeType.Text)
+			{
+				string val = n.InnerText;
+				return (val.Trim().Length == 0);
+			}
+			else if (n.NodeType == XmlNodeType.Element)
+			{
+				return (n.ChildNodes.Count == 0);
+			}
+			else
+			{
+				return false;
+			}
+		}
+
+		/// <summary>
+		/// Constructor using XmlNode parameter
+		///	</summary>
+		public <%= classname %> (XmlNode xmlNode)
+		{
+			XmlNode ChildNode = null;
+			XmlNodeList ChildNodeList = null;
+<% type = data_type %>
+<% while type %>
+<% type.properties.each do |name , definition| %>
+<% vname = validate_property_name(name, true) %>
+<% if definition.array %>
+			ChildNodeList = xmlNode.SelectNodes("*[local-name() = '<%= name %>']");
+			if (ChildNodeList != null && ChildNodeList.Count > 0)
+			{
+				for(int i = 0; i < ChildNodeList.Count; i++)
+				{
+<% if is_complex_type(definition.type, schema) || is_enum_type(definition.type, schema) %>
+<% if definition.enum %>
+					string value = ChildNodeList[i].InnerText;
+					this.<%= vname %>.Add((<%= validate_class_name(definition.type) %>)ReflectionEnumUtil.GetValue(value, typeof(<%= validate_class_name(definition.type) %>)));
+<% else %>
+					XmlNode subNode = ChildNodeList.Item(i);
+					this.<%= vname %>.Add(new <%= validate_class_name(definition.type) %>(subNode));
+				
+<% end %>
+<% else %>
+					string value = ChildNodeList[i].InnerText;
+<% if find_basic_type(definition.type) == 'string' %>
+					this.<%= vname %>.Add(value);
+<% elsif find_basic_type(definition.type) == 'int' %>
+					this.<%= vname %>.Add(System.Convert.ToInt32(value));
+<% elsif find_basic_type(definition.type) == 'bool' %>
+					this.<%= vname %>.Add(System.Convert.ToBoolean(value));
+<% elsif find_basic_type(definition.type) == 'double' %>
+					this.<%= vname %>.add(System.Convert.ToDouble(value));
+<% elsif find_basic_type(definition.type) == 'float' %>
+					this.<%= vname %>.add(System.Convert.ToSingle(value));
+<% end %>
+<% end %>		
+				}	
+			}
+<% else %> // array
+<% if is_complex_type(definition.type, schema) || is_enum_type(definition.type, schema) %>
+<% if definition.enum %>
+<% if definition.attribute %>
+			ChildNode = xmlNode.SelectSingleNode("@*[local-name() = '<%= name %>']");
+			if (ChildNode != null)
+			{
+				this.<%= vname %> = (<%= validate_class_name(definition.type) %>)ReflectionEnumUtil.GetValue(ChildNode.Value, typeof(<%= validate_class_name(definition.type) %>));	
+			}
+<% else %> // attribute
+			ChildNode = xmlNode.SelectSingleNode("*[local-name() = '<%= name %>']");
+			if(ChildNode != null && !IsWhiteSpaceNode(ChildNode))
+			{
+				this.<%= vname %> = (<%= validate_class_name(definition.type) %>)ReflectionEnumUtil.GetValue(ChildNode.InnerText,typeof(<%= validate_class_name(definition.type) %>));
+			}
+<% end %> // attribute
+<% else %> // non-enum
+			ChildNode = xmlNode.SelectSingleNode("*[local-name() = '<%= name %>']");
+			if(ChildNode != null && !IsWhiteSpaceNode(ChildNode))
+			{
+				this.<%= vname %> =  new <%= validate_class_name(definition.type) %>(ChildNode);
+			}
+<% end %> // enum
+<% else %> // complex
+<% if definition.value == '1' %>
+<% if find_basic_type(definition.type) == 'string' %>
+			this.<%= vname %> = xmlNode.InnerText;
+<% elsif find_basic_type(definition.type) == 'int' %>
+			this.<%= vname %> = System.Convert.ToInt32(xmlNode.InnerText);
+<% elsif find_basic_type(definition.type) == 'bool' %>
+			this.<%= vname %> = System.Convert.ToBoolean(xmlNode.InnerText);
+<% elsif find_basic_type(definition.type) == 'double' %>
+			this.<%= vname %> = System.Convert.ToDouble(xmlNode.InnerText);
+<% elsif find_basic_type(definition.type) == 'float' %>
+			this.<%= vname %> = System.Convert.ToSingle(xmlNode.InnerText);
+<% end %>
+<% else %> // value
+			ChildNode = xmlNode.SelectSingleNode("*[local-name() = '<%= name %>']");
+			if(ChildNode != null && !IsWhiteSpaceNode(ChildNode))
+			{
+<% if find_basic_type(definition.type) == 'string' %>
+				this.<%= vname %> = ChildNode.InnerText;
+<% elsif find_basic_type(definition.type) == 'int' %>
+				this.<%= vname %> = System.Convert.ToInt32(ChildNode.InnerText);
+<% elsif find_basic_type(definition.type) == 'bool' %>
+				this.<%= vname %> = System.Convert.ToBoolean(ChildNode.InnerText);
+<% elsif find_basic_type(definition.type) == 'double' %>
+			this.<%= vname %> = System.Convert.ToDouble(ChildNode.InnerText);
+<% elsif find_basic_type(definition.type) == 'float' %>
+			this.<%= vname %> = System.Convert.ToSingle(ChildNode.InnerText);
+<% end %>
+			}
+<% end %> // value
+<% end %> // complex
+<% end %> // array
+<% end %>
+<% type = schema.data_types[type.extends] %>
+<% end %>
+		}
