@@ -27,7 +27,7 @@ Gem::Specification.new do |spec|
   spec.description   = %q{Generate SDK}
   spec.summary       = %q{Generate SDK}
   spec.homepage      = ""
-  spec.license       = "MIT"
+  spec.license       = "Apache License, Version 2.0"
 
   spec.files         = Dir["{lib,templates,bin}/**/*"] + [ "README.md", "LICENSE.txt" ]
   spec.executables   = spec.files.grep(%r{^bin/}) { |f| File.basename(f) }
