@@ -1,5 +1,5 @@
 
-Genio is an easy to use code generation tool that can generate API client libraries in multiple programming languages. Genio comes with in-built support for multiple API specification formats - WSDLs, WADLs and the [JSON schema](http://json-schema.org/) format but also allows you to plug in parsers for additional specification formats. It uses a simple templating system that allows easy customization of the generated code.
+Genio is an easy to use code generation tool that can generate API client libraries in multiple programming languages. Genio comes with in-built support for multiple API specification formats - WSDLs, WADLs and the [Google discovery format](https://developers.google.com/discovery) but also allows you to plug in parsers for additional specification formats. It uses a simple templating system that allows easy customization of the generated code.
 
 
 ## Requirements
@@ -14,14 +14,15 @@ gem install genio
 
 ## Usage
 
-Once you have genio installed on your local machine, run
+With genio installed on your local machine, run
 
 ```sh
 genio <java|php|dotnet> --schema=path/to/specification [--output-path=output/directory]
 ```
 
+With the --schema argument option, Genio will attempt to guess the specification type based on the file extension of the argument. If you follow non-standard naming convention for your files, please use the --wsdl / --wadl / --json-schema arguments instead. 
 
-With the --schema argument option, Genio will attempt to guess the specification type based on the file extension of the argument. If you follow a non-standard naming convention, please use the --wsdl / --wadl / --json-schema argument options instead.
+Once you have generated source files with genio, you can use them in your project in conjunction with PayPal's core SDK libraries. You can find more language specific instructions [here](https://github.com/paypal/genio/wiki/Using-genio).
 
 ## Supported languages
 
@@ -33,15 +34,24 @@ Genio comes with templates for the following programming languages. Support for 
 
 ## Supported formats
 
-   * JSON schema (`--json-schema=path/to/schema.json`)
    * WADL (`--wadl=path/to/schema.wadl`)
+   * Google discovery format (`--json-schema=path/to/schema.json`)
    * WSDL (`--wsdl=path/to/schema.wsdl`)
+
+## Upcoming features
+
+We have plans to add the following soon
+
+  * Automatic API reference generation from spec.
+  * Support for JSON schema Version 4 specification.
 
 ## Documentation
 
    * [Genio internals](https://github.com/paypal/genio/wiki/Genio-internals)
 
-## Getting help
+## Contributions and issues
 
-If you have a feature ask or an issue to report, please file an [issue](https://github.com/paypal/genio/issues/new) on github
+We will be happy to accept contributions by way of templates for additional languages and parsers for other API specification formats. Please submit a pull request if you would like to contribute.
+
+If you have a feature ask or an issue to report, please file an [issue](https://github.com/paypal/genio/issues/new) on github.
 
