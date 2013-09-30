@@ -41,7 +41,7 @@ class <%= classname %> extends PPBaseService {
 	/**
 	* <%= definition.description %>
 	* @param <%= get_namespace(schema.data_types[definition.request].package) %>\<%= definition.request %> $<%= valid_property_name(definition.request) %>
-	* @param PayPal\Core\PPApiContext $apiContext
+	* @param PayPal\Common\PPApiContext $apiContext
 	* @return <%= get_namespace(schema.data_types[definition.response].package) %>\<%= definition.response %>
 <% if definition.fault %>
 	* @throws <%= get_namespace(schema.data_types[definition.fault].package) %>\<%= definition.fault %>
