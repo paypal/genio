@@ -25,8 +25,8 @@ Gem::Specification.new do |spec|
   spec.authors       = ["PayPal"]
   spec.email         = ["DL-PP-Platform-Ruby-SDK@ebay.com"]
 
-  spec.summary       = %q{Generate API client libraries for Java/PHP/DotNet based on JSON-Schema/WSDL/WADL}
-  spec.description   = %q{Generate API client libraries for Java/PHP/DotNet based on JSON-Schema/WSDL/WADL}
+  spec.summary       = %q{Genio is an extensible tool that can generate code to consume APIs in multiple programming languages based on API specification formats: JSON-Schema/WSDL/WADL}
+  spec.description   = %q{Genio is an extensible tool that can generate code to consume APIs in multiple programming languages based on API specification formats: JSON-Schema/WSDL/WADL}
   spec.homepage      = "https://github.com/paypal/genio"
   spec.license       = "Apache License, Version 2.0"
 
